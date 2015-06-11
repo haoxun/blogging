@@ -1,0 +1,108 @@
+Title: 在执行s[:-1]的时候发生了什么？
+Date: 9/2/2014
+
+## 导言
+
+这几天在刷Python Language Reference，笔者将从syntax与data model的角度解析解析一下s[:-1]，权当练手。本文可能不适合初学者阅读。
+
+## 分析
+
+从Expression的角度来看，s[:-1]是一个slicing，下面是文档中的定义：
+
+> A slicing selects a range of items in a sequence object (e.g., a string, tuple or list). Slicings may be used as expressions or as targets in assignment or del statements. The syntax for a slicing:
+
+> 
+```
+slicing      ::=  primary "[" slice_list "]"
+slice_list   ::=  slice_item ("," slice_item)* [","]
+slice_item   ::=  expression | proper_sliceproper_slice
+             ::=  [lower_bound] ":" [upper_bound] [ ":" [stride] ]
+lower_bound  ::=  expressionupper_bound 
+             ::=  expressionstride
+             ::=  expression
+```
+
+需要注意的是，slicing与subscription是有歧义的，为了解决这个问题，
+
+> in this case the interpretation as a subscription takes priority over the interpretation as a slicing.
+
+而事实上，从data model的角度来说，subscription与slicing调用的是同一组的**object method**，即为：
+
+```python
+object.__getitem__(self, key)
+object.__setitem__(self, key)
+object.__delitem__(self, key)
+```
+
+这三个method分别对应reference/assignment/deletion操作。
+
+下面继续分析slicing的semantics，其文档是这么定义的：
+
+> The semantics for a slicing are as follows. The **primary** must evaluate to a **mapping object**, and it is indexed (using the same \_\_getitem\_\_() method as normal subscription) with a key that is constructed from the slice list, as follows. If the slice list contains **at least one comma**, the key is a tuple containing the conversion of the slice items; otherwise, the conversion of the lone slice item is the key. The conversion of a slice item that is an expression is that expression. The conversion of a proper slice is a **slice object** (see section The standard type hierarchy) whose start, stop and step attributes are the values of the expressions given as lower bound, upper bound and stride, respectively, substituting None for missing expressions.
+
+（需要关注的部分已加粗）
+
+首先，文档中提到了“The **primary** must evaluate to a **mapping object**”，其实这里文档有点小bug。在Python的data model中，built-in mapping object只有一种，那就是dict，而dict是不支持slicing操作的。笔者认为这一句应该改为“The **primary** must evaluate to a **sequence object**”。
+
+其次，请注意slice_list的语法定义：
+
+>```
+slice_list ::= slice_item ("," slice_item)* [","]
+```
+
+当slice_list中只有一个slice_item的时候，如a[:-1]，传入的argument（如“:-1”）会被用于生成一个**slice object**，其更多信息请看[Built-in Functions](https://docs.python.org/3/library/functions.html#slice)。
+
+当slice_list中出现一个以上逗号的时候，如a[1:2:3, ::-1]，传入的argument会被用于生成一个**包含slice object的tuple**。这里的语法与**parenthesized form**的语法是一致的：
+
+> A parenthesized form is an optional expression list enclosed in parentheses:
+>
+```
+parenth_form ::= "(" [expression_list] ")"
+```
+> A parenthesized expression list yields whatever that expression list yields: **if the list contains at least one comma, it yields a tuple; otherwise, it yields the single expression** that makes up the expression list.
+
+下面是一个示例：
+
+```python
+>>> class Test:
+...     def __getitem__(self, key):
+...             print(key)
+...
+>>> t = Test()
+>>> t[:-1]
+slice(None, -1, None)
+>>> t[::-1,]
+(slice(None, None, -1),)
+>>> t[1:2:3, 4:5:6]
+(slice(1, 2, 3), slice(4, 5, 6))
+```
+
+
+需要注意的是，sequence的slicing操作**不支持slice_list with a comma，仅支持传入单个slice object**。假设a是一个built-in sequence instance，a[::-1,]、a[1:2:3, 4:5:6]等操作是不合法的。
+
+需要注意的是，在完成primary evaluation、生成slice object之前，有一步较为重要的工作。为了描述这一步工作，先引一段文档。下面文字摘自assignment statment：
+
+> ...
+> If the target is a slicing: The primary expression in the reference is evaluated. It should yield a **mutable sequence object** (such as a list). The assigned object should be a sequence object of the same type. **Next, the lower and upper bound expressions are evaluated, insofar they are present; defaults are zero and the sequence’s length. The bounds should evaluate to integers. If either bound is negative, the sequence’s length is added to it**. The resulting bounds are clipped to lie between zero and the sequence’s length, inclusive. Finally, the sequence object is asked to replace the slice with the items of the assigned sequence. The length of the slice may be different from the length of the assigned sequence, thus changing the length of the target sequence, if the object allows it.
+
+上文对assignment statment中LHS为**slicing of sequence object**的情况进行了说明，以上说明对于reference与deletion也是适用的。让我们回顾以下slice item的语法：
+
+>```
+proper_slice ::=  [lower_bound] ":" [upper_bound] [ ":" [stride] ]
+```
+
+按照上面的说明，第一步是对lower_bound与upper_bound进行evaluate，如果缺失则采用默认值。**如果某个bound是负数，那么这个bound将会转化为(bound + sequence’s length)**。对于Evaluation的结果，如果超出了\[0: sequence's length\]，那么会**使用边界值替代超出值**。以下为示例代码：
+
+```python
+>>> *a, = range(10)
+>>> a
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+>>> a[1:100]
+[1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+
+对于built-in sequence，slicing操作有如下通俗易懂的解释：
+
+> Sequences also support slicing: a[i:j] **selects all items with index k such that i <= k < j**. When used as an expression, a slice is a sequence of the same type. This implies that the index set is renumbered so that it starts at 0.
+> Some sequences also support “extended slicing” with a third “step” parameter: a[i:j:k] **selects all items of a with index x where x = i + n*k, n >= 0 and i <= x < j**.

@@ -1,0 +1,57 @@
+Title: 一种论文写作的容灾解决方案
+Date: 12/3/2015
+
+# 动机
+
+最近刚开始写毕业论文，没想到立马出了容灾方面的问题，半个小时的工作被我误删除了！不幸中的万幸是，这种问题在一开始就暴露了出来，由此我写了一个简单的脚本来防止这种情况的再次出现。
+
+本文的目标读者是使用 *nix 环境的程序员。
+
+# 解决方案
+
+可能有人要吐槽我了：“直接上配置管理工具不就得了！”。事实上，我写的脚本只是在 git 外面套了一层壳而已，其功能为：以每一天为单位，自动 commit 所有的变更，自动 push 到 remote。
+
+以下是该 Python 脚本（其实并没有什么用）：
+
+```python
+#!/usr/bin/env python
+from __future__ import (absolute_import, division, unicode_literals,
+                        print_function, with_statement)
+
+from time import mktime, strptime
+from datetime import date
+from io import open
+import subprocess
+
+
+def get_previous_commit_date(file_name):
+    try:
+        text = open(file_name, encoding='utf-8').read().strip()
+        return date.fromtimestamp(mktime(strptime(text, '%Y-%m-%d')))
+    except Exception:
+        return date.fromtimestamp(0)
+
+
+def set_commit_date(file_name, text):
+    with open(file_name, mode='w', encoding='utf-8') as f:
+        f.write(text)
+
+
+def main():
+    file_name = '.daily_commit_log'
+    today = date.today()
+    if today == get_previous_commit_date(file_name):
+        return
+    else:
+        today_string = '{}'.format(today.isoformat())
+        set_commit_date(file_name, today_string)
+        subprocess.check_call(['git', 'add', '--all'])
+        subprocess.check_call(['git', 'commit', '-am', today_string])
+        subprocess.check_call(['git', 'push'])
+
+
+if __name__ == '__main__':
+    main()
+```
+
+这个脚本是 Python 2/3 compatible 的，跑之前需要在当前目录建立 git repo 以及配置 git remote。
