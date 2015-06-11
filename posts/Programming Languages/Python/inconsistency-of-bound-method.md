@@ -28,13 +28,13 @@ print(Test.func)
 运行结果：
 
 ```
-➜  pylab python descriptor.py
+$ python descriptor.py
 <unbound method Test.func>
-➜  pylab python3 descriptor.py
+$ python3 descriptor.py
 <function func at 0x10497fc80>
-➜  pylab python --version
+$ python --version
 Python 2.7.9
-➜  pylab python3 --version
+$ python3 --version
 Python 3.4.3
 ```
 
@@ -74,18 +74,29 @@ print(func.__get__(None, Test))
 运行结果与上例相同：
 
 ```
-➜  pylab python descriptor.py
+$ python descriptor.py
 <unbound method Test.func>
-➜  pylab python3 descriptor.py
+$ python3 descriptor.py
 <function func at 0x10497fc80>
-➜  pylab python --version
+$ python --version
 Python 2.7.9
-➜  pylab python3 --version
+$ python3 --version
 Python 3.4.3
 ```
 
-inconsistency 的原因暂时不清楚，弄明白了再继续写罢。
+这种不一致的根源在于 Python 3 取消了 unbound method 的概念：
 
+```python
+class Example:
+    @staticmethod
+    def member_a():
+        pass
+
+    def member_b():
+        pass
+```
+
+`Example.member_a` 与 `Example.member_b` 是等价的，未经 `staticmethod` decorate 的 `Example.member_b` 不再是一个 unbound method，而是一个 `function`.
 
 [1]: https://docs.python.org/2/reference/datamodel.html#more-attribute-access-for-new-style-classes
 [2]: http://stackoverflow.com/a/8961717/4501774
