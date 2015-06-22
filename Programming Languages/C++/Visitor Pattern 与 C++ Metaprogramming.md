@@ -1,6 +1,3 @@
-Title: Visitor Pattern 与 C++ Metaprogramming
-Date: 16/1/2015
-
 # 简介
 
 这半个月都在弄一个 C++ 项目（[clidoc](https://github.com/haoxun/clidoc)），在这个项目中我通过 C++ metaprogramming（template）实现了一种非典型的 Visitor Pattern，在此分享一下。

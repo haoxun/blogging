@@ -1,6 +1,3 @@
-Title: PEP8解析系列：Naming Convention
-Date: 6/12/2013
-
 ## Introduction
 
 在Wikipedia中，对[naming convention](http://en.wikipedia.org/wiki/Naming_convention_%28programming%29)的进行了如下描述：

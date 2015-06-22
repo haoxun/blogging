@@ -1,6 +1,3 @@
-Title: __get__ 于 py2 与 py3 的不一致问题
-Date: 26/4/2015
-
 # 前言
 
 目前本文是一篇关于 inconsistency of `function`'s `__get__` in py2 and py3 的部分问题分析，目标读者的可能要求：

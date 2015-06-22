@@ -1,6 +1,3 @@
-Title: Python学习指引
-Date: 4/2/2014
-
 ## pre入门
 Python作为一门“好上手”的编程语言，实在太好入门了，如果有C/C++/Java的经验，入门那是分分钟的事情。关于怎么入门的问题，知乎上已经有太多类似的问题了，而且，Python的wiki上还维护了一个[BeginnersGuide页面](https://wiki.python.org/moin/BeginnersGuide)，在此不作详细叙述。
 
